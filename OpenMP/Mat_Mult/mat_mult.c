@@ -17,11 +17,7 @@ void initMatrix(int a[rowA][colA], int b[colA][colB], int sol[rowA][colB], int s
 
 	for (int i = 0; i < rowA; i++)
 		for (int j = 0; j < colB; j++)
-			sol[i][j] = 0;
-
-	for (int i = 0; i < rowA; i++)
-		for (int j = 0; j < colB; j++)
-			sol_Open[i][j] = 0;
+			sol[i][j] = sol_Open = 0;
 }
 
 void showMatrix(int a[rowA][colA], int b[colA][colB]) {
