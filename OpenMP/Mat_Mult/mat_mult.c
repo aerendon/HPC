@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <omp.h>
 
-#define rowA 10
-#define colA 10
-#define colB 10
+#define rowA 700
+#define colA 700
+#define colB 700
 
 void initMatrix(int a[rowA][colA], int b[colA][colB], int sol[rowA][colB], int sol_Open[rowA][colB]) {
 	for (int i = 0; i < rowA; i++)
@@ -45,6 +45,17 @@ void multMatrix(int a[rowA][colA], int b[colA][colB], int sol[rowA][colB]) {
 				sol[i][j] += a[i][k] *  b[k][j];
 }
 
+void multMatrixOpen(int a[rowA][colA], int b[colA][colB], int sol[rowA][colB]) {
+	int i, j, k, rA = rowA, cA = colA, cB = colB;
+	#pragma omp parallel shared(a, b, rA, cA, cB), private(i, j, k, sol)
+	{
+		#pragma omp for scheduled(static)
+		for (int i = 0; i < rowA; i++)
+			for (int j = 0; j < colA; j++)
+				for (int k = 0; k < colA; k++)
+					sol[i][j] += a[i][k] *  b[k][j];
+	}
+}
 
 void showSol(int sol[rowA][colB]) {
 	for (int i = 0; i < rowA; i++) {
@@ -61,8 +72,9 @@ int main() {
 
 	initMatrix(a, b, sol, sol_Open);
 	multMatrix(a, b, sol);
+	multMatrixOpen(a, b, sol_Open);
 	// showMatrix(a, b);
-	showSol(sol);
+	// showSol(sol_Open);
 
 	return 0;
 }
