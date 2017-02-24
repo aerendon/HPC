@@ -1,9 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <mpi.h>
-#include <time.h>
 
-#define col 6
+#define col 100000
 
 void initVec(int a[col], int b[col], int sol[col], int sol_mpi[col]) {
   for (int i = 0; i < col; i++)
@@ -52,9 +51,9 @@ int main() {
   //   printf("%s %f\n", "Time OMP: ", time_omp);
   // }
   // else printf("%s\n", "Wrong answer");
-  showVector(a);
-  showVector(b);
-  showVector(sol);
+  // showVector(a);
+  // showVector(b);
+  // showVector(sol);
 
   MPI_Finalize();
   return 0;
