@@ -3,18 +3,18 @@
 #include <mpi.h>
 #include <time.h>
 
-#define rowA 700
-#define colA 700
-#define colB 700
+#define rowA 10
+#define colA 5
+#define colB 5
 
 void initMatrix(int a[rowA][colA], int b[colA][colB], int sol[rowA][colB], int sol_Open[rowA][colB]) {
 	for (int i = 0; i < rowA; i++)
 		for (int j = 0; j < colA; j++)
-			a[i][j] = i * 2;
+			a[i][j] = (i + 1) * 2;
 
 	for (int i = 0; i < colA; i++)
 		for (int j = 0; j < colB; j++)
-			b[i][j] = i * 2;
+			b[i][j] = (i + 1) * 2;
 
 	for (int i = 0; i < rowA; i++)
 		for (int j = 0; j < colB; j++)
@@ -36,8 +36,8 @@ void showMatrix(int a[rowA][colA], int b[colA][colB]) {
 }
 
 void multMatrix(int a[rowA][colA], int b[colA][colB], int sol[rowA][colB], int initRowA, int finRowA) {
-	for (int i = initRowA; i < finRowA; i++)
-		for (int j = 0; j < colA; j++)
+	for (int i = 0; i < rowA; i++)
+		for (int j = initRowA; j < finRowA; j++)
 			for (int k = 0; k < colA; k++)
 				sol[i][j] += a[i][k] *  b[k][j];
 }
@@ -80,23 +80,34 @@ int main() {
 
   if (world_rank == 0) {
     t1 = MPI_Wtime();
-    multMatrix(a, b, sol);
+    multMatrix(a, b, sol, 0, colB);
+    // MPI_Recv(sol_mpi + col/2, col - (col / 2), MPI_INT, 1, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     t2 = MPI_Wtime();
+    // showSol(sol);
     printf( "Secuential time is %f\n", t2 - t1 );
 
     t1 = MPI_Wtime();
-    vecAdd(a, b, sol_mpi, 0, col / 2);
-    MPI_Recv(sol_mpi + col/2, col - (col / 2), MPI_INT, 1, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    multMatrix(a, b, sol_mpi, 0, colB / 2);
+    showSol(sol_mpi);
+    // MPI_Recv(sol_mpi + col/2, col - (col / 2), MPI_INT, 1, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    for (int i = 0; i < colB; i++) {
+      MPI_Recv(sol_mpi[i] + (rowA / 2), rowA - (rowA / 2), MPI_INT, 1, i, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    }
     t2 = MPI_Wtime();
+
     printf( "MPI time is %f\n", t2 - t1 );
-    //showVector(sol_mpi);
-    // if(check(sol, sol_mpi)) printf("Correct\n");
-    // else printf(":( \n");
+    showSol(sol_mpi);
+
+    if(check(sol, sol_mpi)) printf("Correct\n");
+    else printf(":( \n");
 
   } else if (world_rank == 1) {
-    vecAdd(a, b, sol_mpi, col / 2, col);
-    MPI_Send(sol_mpi + col/2, col - (col / 2), MPI_INT, 0, 1, MPI_COMM_WORLD);
-    //showVector(sol_mpi);
+    multMatrix(a, b, sol_mpi, colB / 2, colB);
+    showSol(sol_mpi);
+
+    for (int i = 0; i < colB; i++) {
+      MPI_Send(sol_mpi[i] + (rowA / 2), rowA - (rowA / 2), MPI_INT, 0, i, MPI_COMM_WORLD);
+    }
   }
 
   MPI_Finalize();

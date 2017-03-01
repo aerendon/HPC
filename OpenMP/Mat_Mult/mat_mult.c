@@ -37,7 +37,7 @@ void showMatrix(int a[rowA][colA], int b[colA][colB]) {
 
 void multMatrix(int a[rowA][colA], int b[colA][colB], int sol[rowA][colB]) {
 	for (int i = 0; i < rowA; i++)
-		for (int j = 0; j < colA; j++)
+		for (int j = 0; j < colB; j++)
 			for (int k = 0; k < colA; k++)
 				sol[i][j] += a[i][k] *  b[k][j];
 }
