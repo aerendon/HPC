@@ -33,6 +33,7 @@ void showMatrix(int a[rowA][colA], int b[colA][colB]) {
 			printf("%d  ", b[i][j]);
 		printf("\n");
 	}
+	printf("\n");
 }
 
 void multMatrix(int a[rowA][colA], int b[colA][colB], int sol[rowA][colB], int initRowA, int finRowA) {
@@ -83,12 +84,14 @@ int main() {
     multMatrix(a, b, sol, 0, colB);
     // MPI_Recv(sol_mpi + col/2, col - (col / 2), MPI_INT, 1, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     t2 = MPI_Wtime();
-    // showSol(sol);
+    showMatrix(a, b);
+    
+    showSol(sol);
     printf( "Secuential time is %f\n", t2 - t1 );
 
     t1 = MPI_Wtime();
     multMatrix(a, b, sol_mpi, 0, colB / 2);
-    showSol(sol_mpi);
+    //showSol(sol_mpi);
     // MPI_Recv(sol_mpi + col/2, col - (col / 2), MPI_INT, 1, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     for (int i = 0; i < colB; i++) {
       MPI_Recv(sol_mpi[i] + (rowA / 2), rowA - (rowA / 2), MPI_INT, 1, i, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -96,14 +99,14 @@ int main() {
     t2 = MPI_Wtime();
 
     printf( "MPI time is %f\n", t2 - t1 );
-    showSol(sol_mpi);
+    //showSol(sol_mpi);
 
-    if(check(sol, sol_mpi)) printf("Correct\n");
-    else printf(":( \n");
+    //if(check(sol, sol_mpi)) printf("Correct\n");
+    //else printf(":( \n");
 
   } else if (world_rank == 1) {
     multMatrix(a, b, sol_mpi, colB / 2, colB);
-    showSol(sol_mpi);
+    //showSol(sol_mpi);
 
     for (int i = 0; i < colB; i++) {
       MPI_Send(sol_mpi[i] + (rowA / 2), rowA - (rowA / 2), MPI_INT, 0, i, MPI_COMM_WORLD);
