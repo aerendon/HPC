@@ -5,7 +5,7 @@
 #include <limits.h>
 #include <math.h>
 
-#define col 10000000
+#define col 64000000
 
 void initVec(int *a, int *b, int *sol) {
   for (int i = 0; i < col; i++)
@@ -44,7 +44,7 @@ void vecAddCuda(int *h_a, int *h_b, int *h_sol) {
   
   cudaMalloc((void **) &d_sol, size);
   
-  vecAddKernel<<<ceil(col/256.0), 256>>>(d_a, d_b, d_sol);
+  vecAddKernel<<<ceil(col/1024.0), 1024>>>(d_a, d_b, d_sol);
   
   cudaMemcpy(h_sol, d_sol, size, cudaMemcpyDeviceToHost);
   
