@@ -7,6 +7,13 @@
 
 #define col 64000000
 
+void checkErr(cudaError_t err) {
+  if (err != cudaSuccess) {
+    printf("%s in %s at line %d\n", cudaGetErrorString( err), __FILE__,__LINE__);
+    exit(EXIT_FAILURE);
+  }
+}
+
 void initVec(int *a, int *b, int *sol) {
   for (int i = 0; i < col; i++)
     a[i] = b[i] = i * 2;
@@ -37,18 +44,23 @@ void vecAddCuda(int *h_a, int *h_b, int *h_sol) {
   
   size_t size = col * sizeof(int);
   
-  cudaMalloc((void **) &d_a, size);
+  cudaError_t err = cudaMalloc((void **) &d_a, size);
+  checkErr(err); 
   cudaMemcpy(d_a, h_a, size, cudaMemcpyHostToDevice);
-  cudaMalloc((void **) &d_b, size);
+  err = cudaMalloc((void **) &d_b, size);
+  checkErr(err);
   cudaMemcpy(d_b, h_b, size, cudaMemcpyHostToDevice);
   
-  cudaMalloc((void **) &d_sol, size);
+  err = cudaMalloc((void **) &d_sol, size);
+  checkErr(err);
   
   vecAddKernel<<<ceil(col/1024.0), 1024>>>(d_a, d_b, d_sol);
   
   cudaMemcpy(h_sol, d_sol, size, cudaMemcpyDeviceToHost);
   
-  cudaFree(d_a); cudaFree(d_sol); cudaFree(d_sol);
+  cudaFree(d_a); checkErr(err); 
+  cudaFree(d_sol); checkErr(err);
+  cudaFree(d_sol); checkErr(err);
 }
 
 int check(int *seq, int *cuda) {
