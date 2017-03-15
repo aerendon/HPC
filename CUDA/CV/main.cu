@@ -12,8 +12,6 @@
 using namespace cv;
 using namespace std;
 
-#define col 64000000
-
 void checkErr(cudaError_t err) {
   if (err != cudaSuccess) {
     printf("%s in %s at line %d\n", cudaGetErrorString( err), __FILE__,__LINE__);
@@ -22,15 +20,15 @@ void checkErr(cudaError_t err) {
 }
 
 void showVector(unsigned char *mat, int row, int column) {
-  for (int i = 0; i < column * row; i++)
-    printf("%d  ", mat[i]);
+  for (int i = 0; i < 6; i++)
+    printf("%u  ", mat[i]);
   printf("\n");
 }
 
 __global__
 void pictureKernel(unsigned char *d_pin, unsigned char *d_pout, int row, int column) {
-  int Column = threadIdx.x + blockDim.x * blockIdx.x;
-  int Row = threadIdx.y + blockDim.y * blockIdx.y;
+  int Column = blockDim.x * blockIdx.x + threadIdx.x;
+  int Row = blockDim.y * blockIdx.y + threadIdx.y;
   if ((Row < row) && (Column < column)) d_pout[Row * column + Column] = 2 * d_pin[Row * column + Column];
 }
 
@@ -68,34 +66,31 @@ void arrToImg(unsigned char *pout, int column, int row) {
 
 
 int main(int argc, char** argv) {
-  int column, row; 
+  int column, row;
   Mat image;
   image = imread(argv[1], CV_LOAD_IMAGE_GRAYSCALE);   // Read the file
 
   if(!image.data) {
       cout <<  "Could not open or find the image" << std::endl ;
       return -1;
-  } 
+  }
 
   namedWindow("Display window", WINDOW_AUTOSIZE);// Create a window for display.
   imshow("Display window", image);                   // Show our image inside it.
   waitKey(0);
-  
-  
+
   row = image.rows;
   column = image.cols;
   size_t size = column * row * sizeof(unsigned char);
 
   unsigned char *img2 = (unsigned char*) malloc(size);
   unsigned char *img = image.data;
-  
-  //showVector(img, column, row);
-  
-  //showVector(img2, column, row);
+
+  showVector(img, column, row);
   pictureCuda(img, img2, row, column);
+  showVector(img2, column, row);
   arrToImg(img2, column, row);
 
- 
   free(img2);
 
   return 0;
