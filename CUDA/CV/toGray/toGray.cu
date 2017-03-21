@@ -52,6 +52,17 @@ void pictureCuda(unsigned char *h_pin, unsigned char *h_pout, int row, int colum
   err = cudaFree(d_pout); checkErr(err);
 }
 
+void pictureSeq(unsigned char *h_pin, unsigned char *h_pout, int row, int column) {
+
+  int pos = 0;
+  for (int j = 0; j < row * column * 3; j += 3) {
+    //intensity = 0.2989s*red + 0.5870*green + 0.1140*blue
+    //OpenCV -> color BGR
+    h_pout[pos] = (0.1140 * h_pin[j]) + (0.5870 * h_pin[j + 1]) + (0.2989 * h_pin[j + 2]);
+    pos++;
+  }
+}
+
 void arrToImg(unsigned char *pout, int column, int row) {
   Mat img(row, column, CV_8UC1, pout);
 
@@ -64,7 +75,7 @@ void arrToImg(unsigned char *pout, int column, int row) {
 int main(int argc, char** argv) {
   int column, row;
   Mat image;
-  image = imread(argv[1], CV_LOAD_IMAGE_GRAYSCALE);   // Read the file
+  image = imread(argv[1], CV_LOAD_IMAGE_COLOR);   // Read the file
 
   if(!image.data) {
       cout <<  "Could not open or find the image" << std::endl ;
@@ -77,17 +88,21 @@ int main(int argc, char** argv) {
 
   row = image.rows;
   column = image.cols;
-  size_t size = column * row * sizeof(unsigned char);
+  size_t size = (column * row) * sizeof(unsigned char);
 
-  unsigned char *img2 = (unsigned char*) malloc(size);
+  unsigned char *imgSec = (unsigned char*) malloc(size);
+  unsigned char *imgPar = (unsigned char*) malloc(size);
   unsigned char *img = image.data;
 
-  showVector(img, column, row);
-  pictureCuda(img, img2, row, column);
-  showVector(img2, column, row);
-  arrToImg(img2, column, row);
+  //showVector(img, column, row);
+  //showVector(img2, column, row);
+  pictureSeq(img, imgSec, row, column);
+  //pictureCuda(img, img2, row, column);
+  //showVector(img2, column, row);
+  arrToImg(imgSec, column, row);
 
-  free(img2);
+  free(imgSec);
+  free(imgPar);
 
   return 0;
 }
