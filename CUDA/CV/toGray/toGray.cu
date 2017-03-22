@@ -5,6 +5,11 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <iostream>
 
+#define RED 2
+#define GREEN 1
+#define BLUE 0
+#define CHANNELS 3
+
 using namespace cv;
 using namespace std;
 
@@ -25,7 +30,13 @@ __global__
 void pictureKernel(unsigned char *d_pin, unsigned char *d_pout, int row, int column) {
   int Column = blockDim.x * blockIdx.x + threadIdx.x;
   int Row = blockDim.y * blockIdx.y + threadIdx.y;
-  if ((Row < row) && (Column < column)) d_pout[Row * column + Column] = 2 * d_pin[Row * column + Column];
+  int idx = Row * Column + column;
+
+  if ((Row < row) && (Column < column)) {
+    //intensity = 0.2989s*red + 0.5870*green + 0.1140*blue
+    //OpenCV -> color BGR
+    d_pout[idx] = (0.1140 * d_pin[idx]) + (0.5870 * d_pin[idx + 1]) + (0.2989 * d_pin[idx + 2]);
+  }
 }
 
 void pictureCuda(unsigned char *h_pin, unsigned char *h_pout, int row, int column) {
@@ -53,7 +64,6 @@ void pictureCuda(unsigned char *h_pin, unsigned char *h_pout, int row, int colum
 }
 
 void pictureSeq(unsigned char *h_pin, unsigned char *h_pout, int row, int column) {
-
   int pos = 0;
   for (int j = 0; j < row * column * 3; j += 3) {
     //intensity = 0.2989s*red + 0.5870*green + 0.1140*blue
@@ -82,9 +92,9 @@ int main(int argc, char** argv) {
       return -1;
   }
 
-  namedWindow("Display window", WINDOW_AUTOSIZE);// Create a window for display.
-  imshow("Display window", image);                   // Show our image inside it.
-  waitKey(0);
+  //namedWindow("Display window", WINDOW_AUTOSIZE);// Create a window for display.
+  //imshow("Display window", image);                   // Show our image inside it.
+  //(waitKey(0));
 
   row = image.rows;
   column = image.cols;
@@ -96,10 +106,25 @@ int main(int argc, char** argv) {
 
   //showVector(img, column, row);
   //showVector(img2, column, row);
+  /*
+  clock_t start = clock();
   pictureSeq(img, imgSec, row, column);
-  //pictureCuda(img, img2, row, column);
-  //showVector(img2, column, row);
-  arrToImg(imgSec, column, row);
+  clock_t end = clock();
+
+  double cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+  printf("%lf\n", cpu_time_used);
+  */
+  
+  clock_t start = clock();
+
+  pictureCuda(img, imgPar, row, column);
+  ////showVector(img2, column, row);
+  clock_t end = clock();
+
+  double gpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+  printf("%lf\n", gpu_time_used);
+  
+  //arrToImg(imgSec, column, row);
 
   free(imgSec);
   free(imgPar);

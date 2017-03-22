@@ -1,8 +1,8 @@
 #include <bits/stdc++.h>
 #include <cuda.h>
 
-#define H 3000
-#define W 3000
+#define H 2000
+#define W 2000
 
 using namespace std;
 
