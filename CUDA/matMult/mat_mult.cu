@@ -1,8 +1,8 @@
 #include <bits/stdc++.h>
 #include <cuda.h>
 
-#define H 2000
-#define W 2000
+#define H 500
+#define W 500
 
 using namespace std;
 
@@ -93,20 +93,20 @@ int main() {
   //display(h_D);
 
   init(h_A); init(h_B);
-
+  /*
   clock_t start = clock();
   mult(h_A, h_B, h_C);
 
   clock_t end = clock();
   double cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
   printf("%lf\n", cpu_time_used);
-
-  /*clock_t start = clock();
+*/
+  clock_t start = clock();
   multCuda(h_A, h_B, h_D);
   clock_t end = clock();
   double gpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
   std::cout << gpu_time_used << "\n";
-*/
+
   //display(h_C); display(h_D);
 
   //if (check(h_C, h_D)) printf(":)");
