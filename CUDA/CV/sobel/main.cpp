@@ -13,7 +13,7 @@ void showVector(unsigned char *mat, int row, int column) {
   printf("\n");
 }
 
-Mat sobel(Mat image) {
+Mat sobelOpen(Mat image) {
   Mat grad_x, grad_y;
   Mat abs_grad_x, abs_grad_y;
   Mat grad;
@@ -40,6 +40,31 @@ Mat sobel(Mat image) {
   return grad;
 }
 
+void mult(int *mat1, int *mat2, int row, int column) {
+  int sol = 0;
+
+  for(int k = 0; k < column; k++) {
+    for(int i = k * row; i < row * column; i++) {
+      for(int j = 0; j < row; j++) {
+        sol = (mat1[i] * mat2[j]) + (mat1[i + 1] * mat2[row + j]) + (mat1[i + 2] * mat2[(row * 2) + j]);
+      }
+      i += 2;
+      cout << sol << endl;
+    }
+  }
+}
+
+void sobelSeq(unsigned char *image, int *Gx, int *Gy, int row, int column) {
+  for(int i = 0; i < 3; i++) {
+    // cout << " " << int(Gx[i]);
+  }
+}
+
+Mat arrToMat(unsigned char *pout, int column, int row) {
+  Mat img(row, column, CV_8UC1, pout);
+  return img;
+}
+
 int main(int argc, char** argv) {
   int column, row;
   Mat image;
@@ -59,10 +84,16 @@ int main(int argc, char** argv) {
   size_t size = column * row * sizeof(unsigned char);
 
   unsigned char *img = image.data;
+  int Gx[9] = {1, 0, -1, 2, 0, -2, 1, 0, -1},
+      Gy[9] = {1, 2, 1, 0, 0, 0, -1, -2, -1};
 
-  namedWindow("sobel", WINDOW_AUTOSIZE);
-  imshow("Sobel", sobel(image));
-  waitKey(0);
+  // imshow("Sobel", sobelOpen(image));
+  // waitKey(0);
+
+  sobelOpen(image);
+
+  // sobelSeq(img, Gx, Gy, row, column);
+  // mult(Gx, Gy, 3, 3);
 
   return 0;
 }
