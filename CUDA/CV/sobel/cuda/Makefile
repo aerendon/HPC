@@ -1,5 +1,5 @@
 CFLAGS = `pkg-config --cflags opencv`
 LIBS = `pkg-config --libs opencv`
 
-main : parOCV.cu
-	nvcc $(CFLAGS) parOCV.cu $(LIBS) -o main.out
+main : main.cu
+	nvcc $(CFLAGS) main.cu $(LIBS) -o main.out
