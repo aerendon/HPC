@@ -3,7 +3,7 @@ LIBS = `pkg-config --libs opencv`
 
 all: seq seqOCV par parOCV
 
-parOCV: par.cu
+par: par.cu
 	nvcc $(CFLAGS) par.cu $(LIBS) -o par.out
 
 parOCV: parOCV.cu

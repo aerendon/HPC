@@ -9,7 +9,7 @@
 using namespace cv;
 using namespace std;
 
-void checkError(err) {
+void checkError(cudaError_t err) {
   if ((err) != cudaSuccess) {
     printf("ERROR: %s in %s, line %d\n",cudaGetErrorString(err), __FILE__, __LINE__);  \
     exit(EXIT_FAILURE);
