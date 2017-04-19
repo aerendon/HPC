@@ -57,10 +57,10 @@ void sobel(Mat& image) {
   convolution(img, sobel_y, img_sobel_y, 3, width, height);
   image_magnitude(img_sobel_x, img_sobel_y, img_sobel, width, height);
 
-  // imshow("Input", Mat(height, width, CV_8UC1, img));
-  // waitKey(0);
-  // imshow("Sobel operator", Mat(height, width, CV_8UC1, img_sobel));
-  // waitKey(0);
+  imshow("Input", Mat(height, width, CV_8UC1, img));
+  waitKey(0);
+  imshow("Sobel operator", Mat(height, width, CV_8UC1, img_sobel));
+  waitKey(0);
 
   free(img_sobel_x);
   free(img_sobel_y);

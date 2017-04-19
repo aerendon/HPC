@@ -29,12 +29,12 @@ Mat sobelOpen(Mat image) {
   convertScaleAbs( grad_x, abs_grad_x );
   convertScaleAbs( grad_y, abs_grad_y );
 
-  // namedWindow("sobel", WINDOW_AUTOSIZE);
-  // imshow("Sobel Gx", abs_grad_x);
-  // waitKey(0);
-  // imshow("Sobel Gy", abs_grad_y);
-  // waitKey(0);
-
+  /*namedWindow("sobel", WINDOW_AUTOSIZE);
+  imshow("Sobel Gx", abs_grad_x);
+  waitKey(0);
+  imshow("Sobel Gy", abs_grad_y);
+  waitKey(0);
+  */
   addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
 
   return grad;
@@ -71,8 +71,8 @@ int main(int argc, char** argv) {
 
   unsigned char *img = image.data;
 
-  // imshow("Sobel", sobelOpen(image));
-  // waitKey(0);
+  imshow("Sobel", sobelOpen(image));
+  waitKey(0);
   clock_t start = clock();
   sobelOpen(image);
   clock_t end = clock();

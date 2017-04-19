@@ -27,7 +27,7 @@ void sobel(gpu::GpuMat& image) {
 
   Mat h_img_sobel(img_sobel);
   convertScaleAbs(h_img_sobel, h_img_sobel);
-  //showImage(image, h_img_sobel);
+  showImage(image, h_img_sobel);
 }
 
 int main(int argc, char** argv) {
