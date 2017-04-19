@@ -1,177 +1,144 @@
-#include <iostream>
+#include <cuda.h>
 #include <opencv2/core/core.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
-#include <ctime>
-#include <cmath>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <iostream>
+#include <getopt.h>
+#include <cstdio>
 
 using namespace cv;
 using namespace std;
 
-const int MASK_WIDTH = 3;
-const int MASK_HEIGHT = 3;
-
-// Cache memory
-__constant__ char MASK_X[MASK_WIDTH * MASK_HEIGHT];
-__constant__ char MASK_Y[MASK_WIDTH * MASK_HEIGHT];
+void checkError(err) {
+  if ((err) != cudaSuccess) {
+    printf("ERROR: %s in %s, line %d\n",cudaGetErrorString(err), __FILE__, __LINE__);  \
+    exit(EXIT_FAILURE);
+  }
+}
 
 __device__
-unsigned char check(double Pvalue) {
-  Pvalue = (Pvalue < 0) ? 0 : Pvalue;
-  Pvalue = (Pvalue > 255) ? 255 : Pvalue;
-  return (unsigned char)Pvalue;
+bool inside_image(int row, int col, int width, int height) {
+  return row >= 0 && row < height && col >= 0 && col < width;
 }
 
 __global__
-void sobelFilterKernel(unsigned char *img, unsigned char *grad_x, unsigned char *grad_y, unsigned char *grad, int height, int width) {
+void convolutionKernel(unsigned char* image, float* kernel, float* out_image, int kernel_n, int width, int height) {
   int row = blockIdx.y * blockDim.y + threadIdx.y;
   int col = blockIdx.x * blockDim.x + threadIdx.x;
 
   if (row < height && col < width) {
-    double Px_value = 0;
-    double Py_value = 0;
-
-    int row_start_point = row - (MASK_HEIGHT / 2);
-    int col_start_point = col - (MASK_WIDTH / 2);
-
-    for (int i = 0; i < MASK_HEIGHT; i++) {
-      for (int j = 0; j < MASK_WIDTH; j++) {
-        int currRow = row_start_point + i;
-        int currCol = col_start_point + j;
-        if (currRow >= 0 && currRow < height && currCol >= 0 && currCol < width) {
-          Px_value += img[width * currRow + currCol] * MASK_X[MASK_WIDTH * i + j];
-          Py_value += img[width * currRow + currCol] * MASK_Y[MASK_WIDTH * i + j];
+    int n = kernel_n / 2;
+    float accumulation = 0;
+    for (int i = -n; i <= n; i++) {
+      for (int j = -n; j <= n; j++) {
+        if (inside_image(row + i, col + j, width, height)) {
+          int image_idx = (row + i) * width + (col + j);
+          int kernel_idx = (n + i) * kernel_n + (n + j);
+          accumulation += image[image_idx] * kernel[kernel_idx];
         }
       }
     }
-
-    Px_value = check(Px_value);
-    Py_value = check(Py_value);
-
-    grad_x[width * row + col] = Px_value;
-    grad_y[width * row + col] = Py_value;
-    grad[width * row + col] = (unsigned char)sqrtf((Px_value * Px_value) + (Py_value * Py_value));
+    out_image[row * width + col] = accumulation;
   }
 }
 
-void cudaCheckError(cudaError error, string error_msg) {
-	if(error != cudaSuccess){
-    cerr << error_msg << endl;
-    exit(-1);
+__global__
+void magnitudeKernel(float* x, float* y, unsigned char* r, int width, int height) {
+  int row = blockIdx.y * blockDim.y + threadIdx.y;
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+  if (row < height && col < width) {
+    int idx = row * width + col;
+    r[idx] = (unsigned char) hypot(x[idx], y[idx]);
   }
 }
 
-int main() {
-  cudaError_t error = cudaSuccess;
-  clock_t startCPU, endCPU, startGPU, endGPU;
-  double cpu_time_used, gpu_time_used;
+void sobel(unsigned char *h_img, unsigned char *h_img_sobel, int width, int height) {
+  unsigned char *d_img, *d_img_sobel;
+  float *d_img_sobel_x, *d_img_sobel_y;
+  float *d_sobel_x, *d_sobel_y;
+  long long size = width * height;
+  cudaError_t err;
+  cudaEvent_t start, stop;
 
-  // Device varuables
-  unsigned char *d_grad_x, *d_grad_y, *d_grad;
-  unsigned char *d_dataRawImage, *h_dataRawImage;
+  err = cudaMalloc((void**) &d_img, size * sizeof(unsigned char)); checkError(err);
+  err = cudaMalloc((void**) &d_img_sobel, size * sizeof(unsigned char)); checkError(err);
+  err = cudaMalloc((void**) &d_img_sobel_x, size * sizeof(float)); checkError(err);
+  err = cudaMalloc((void**) &d_img_sobel_y, size * sizeof(float)); checkError(err);
+  err = cudaMalloc((void**) &d_sobel_x, 9 * sizeof(float)); checkError(err);
+  err = cudaMalloc((void**) &d_sobel_y, 9 * sizeof(float)); checkError(err);
 
-  // Host varuables
-  unsigned char *h_grad, *h_grad_x, *h_grad_y;
-  char h_mask_x[] = {-1, 0, 1, -2, 0, 2, -1, 0, 1};
-  char h_mask_y[] = {-1, -2, -1, 0, 0, 0, 1, 2, 1};
+  err = cudaMemcpy(d_img, h_img, size * sizeof(unsigned char), cudaMemcpyHostToDevice); checkError(err);
 
-  // Reading image with OpenCV
-  Mat image, image_gray, grad;
-  image = imread("./img/gatos.jpg", CV_LOAD_IMAGE_COLOR);
-  // image = imread("./inputs/img4.jpg", CV_LOAD_IMAGE_COLOR);
+  float h_sobel_x[] = {1, 0, -1, 2, 0, -2, 1, 0, -1};
+  float h_sobel_y[] = {1, 2, 1, 0, 0, 0, -1, -2, -1};
+  err = cudaMemcpy(d_sobel_x, h_sobel_x, 9 * sizeof(float), cudaMemcpyHostToDevice); checkError(err);
+  err = cudaMemcpy(d_sobel_y, h_sobel_y, 9 * sizeof(float), cudaMemcpyHostToDevice); checkError(err);
 
-  if (!image.data) {
-    cerr << "No image data" << endl;
-    return EXIT_FAILURE;
+  int block_size = 32;
+  dim3 dim_grid(ceil((double) width / block_size), ceil((double) height / block_size), 1);
+  dim3 dim_block(block_size, block_size, 1);
+
+  convolutionKernel<<<dim_grid, dim_block>>>(d_img, d_sobel_x, d_img_sobel_x, 3, width, height);
+  cudaDeviceSynchronize();
+
+  convolutionKernel<<<dim_grid, dim_block>>>(d_img, d_sobel_y, d_img_sobel_y, 3, width, height);
+  cudaDeviceSynchronize();
+
+  magnitudeKernel<<<dim_grid, dim_block>>>(d_img_sobel_x, d_img_sobel_y, d_img_sobel, width, height);
+  cudaDeviceSynchronize();
+
+  if (measure) {
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+    float seconds = 0;
+    cudaEventElapsedTime(&seconds, start, stop);
+    seconds *= 1E-3;
+    int num_arrays_float = 4;
+    int num_arrays_uchar = 2;
+    int bytes = num_arrays_float * sizeof(float) + num_arrays_uchar * sizeof(unsigned char);
+    int num_ops = 9 * 3;
+
+    printf("Effective bandwidth:      %.6f GB/s\n", size * bytes / seconds * 1E-9);
+    printf("Computational throughput: %.6f GB/s\n", num_ops * size / seconds * 1E-9);
   }
 
-  // // CPU
-  // startCPU = clock();
-  // sobelFilter(image, image_gray, grad);
-  // endCPU = clock();
+  err = cudaMemcpy(h_img_sobel, d_img_sobel, size * sizeof(unsigned char), cudaMemcpyDeviceToHost); checkError(err);
 
-  Size s = image_gray.size();
-  int width = s.width;
-  int height = s.height;
-  int size = sizeof(unsigned char) * width * height;
-  int maskSize = sizeof(char) * MASK_WIDTH * MASK_HEIGHT;
+  err = cudaFree(d_img); checkError(err);
+  err = cudaFree(d_img_sobel_x); checkError(err);
+  err = cudaFree(d_img_sobel_y); checkError(err);
+  err = cudaFree(d_img_sobel); checkError(err);
+}
 
-  // allocating memory for the host variables
-  h_dataRawImage = new unsigned char[width * height];
-  h_grad = new unsigned char[width * height];
-  h_grad_x = new unsigned char[width * height];
-  h_grad_y = new unsigned char[width * height];
+void create(Mat& image, bool show, bool measure) {
+  int height = image.rows;
+  int width = image.cols;
 
-  startGPU = clock();
-  // allocating memory for the device variables
-  error = cudaMalloc(&d_grad_x, size);
-  cudaCheckError(error, "Error reservando memoria para d_grad_x");
+  unsigned char *img_sobel = (unsigned char*) malloc(width * height * sizeof(unsigned char));
+  unsigned char *img = (unsigned char*) image.data;
 
-  error = cudaMalloc(&d_grad_y, size);
-  cudaCheckError(error, "Error reservando memoria para d_grad_y");
+  sobel(img, img_sobel, width, height, measure);
 
-  error = cudaMalloc(&d_grad, size);
-  cudaCheckError(error, "Error reservando memoria para d_grad");
+  imshow("Input", Mat(height, width, CV_8UC1, img));
+  waitKey(0);
+  imshow("Sobel operator", Mat(height, width, CV_8UC1, img_sobel));
+  waitKey(0);
 
-  error = cudaMalloc(&d_dataRawImage, size);
-  cudaCheckError(error, "Error reservando memoria para d_dataRawImage");
+  free(img_sobel);
+}
 
-  // Copying data from host to device
-  h_dataRawImage = image_gray.data;
-  error = cudaMemcpy(d_dataRawImage, h_dataRawImage, size, cudaMemcpyHostToDevice);
-  cudaCheckError(error, "Error copiando los datos de h_dataRawImage a d_dataRawImage");
+int main(int argc, char** argv) {
+  int column, row;
+  Mat image;
+  image = imread(argv[1], CV_LOAD_IMAGE_GRAYSCALE);   // Read the file
 
-  error = cudaMemcpyToSymbol(MASK_X, h_mask_x, maskSize);
-  cudaCheckError(error, "Error copiando los datos de h_dataRawImage a d_dataRawImage");
+  if(!image.data) {
+    cout <<  "Could not open or find the image" << endl ;
+    return -1;
+  }
 
-  error = cudaMemcpyToSymbol(MASK_Y, h_mask_y, maskSize);
-  cudaCheckError(error, "Error copiando los datos de h_mask_y a d_mask_y");
-
-  // GPU
-  int blockSize = 32;
-  dim3 dimBlock(blockSize, blockSize, 1);
-  // Launching kernel function
-  dim3 dimGrid(ceil(width / float(blockSize)), ceil(height / float(blockSize)), 1);
-  sobelFilterKernel<<< dimGrid, dimBlock >>>(d_dataRawImage, d_grad_x, d_grad_y, d_grad, height, width);
-
-  // Copying data from device to host
-  cudaMemcpy(h_grad_x, d_grad_x, size, cudaMemcpyDeviceToHost);
-  cudaMemcpy(h_grad_y, d_grad_y, size, cudaMemcpyDeviceToHost);
-  cudaMemcpy(h_grad, d_grad, size, cudaMemcpyDeviceToHost);
-  endGPU = clock();
-
-  Mat sobelImg, sobelImg_x, sobelImg_y;
-
-  // Generating output images
-  // sobelImg.create(height, width, CV_8UC1);
-  // sobelImg_x.create(height, width, CV_8UC1);
-  // sobelImg_y.create(height, width, CV_8UC1);
-  //
-  // sobelImg.data = h_grad;
-  // sobelImg_x.data = h_grad_x;
-  // sobelImg_y.data = h_grad_y;
-  //
-  // imwrite("./img/outputs/1112783873.png", sobelImg);
-  //
-  // waitKey(0);
-
-  cout << fixed;
-  cout.precision(10);
-
-  gpu_time_used = double(endGPU - startGPU) / CLOCKS_PER_SEC;
-  cout << gpu_time_used << endl;
-
-  // Freeing up memory
-  free(h_grad);
-  free(h_grad_x);
-  free(h_grad_y);
-
-  cudaFree(d_dataRawImage);
-  cudaFree(MASK_X);
-  cudaFree(MASK_Y);
-  cudaFree(d_grad_x);
-  cudaFree(d_grad_y);
-  cudaFree(d_grad);
+  create(image);
 
   return 0;
 }

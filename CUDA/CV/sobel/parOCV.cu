@@ -15,7 +15,6 @@ void showImage(gpu::GpuMat& image, Mat h_img_sobel) {
   waitKey(0);
   imshow("Sobel", h_img_sobel);
   waitKey(0);
-
 }
 
 void sobel(gpu::GpuMat& image) {
@@ -47,4 +46,3 @@ int main(int argc, char** argv) {
 
   return 0;
 }
-
