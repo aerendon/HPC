@@ -96,14 +96,14 @@ void sobel(unsigned char *h_img, unsigned char *h_img_sobel, int width, int heig
   err = cudaFree(d_img_sobel); checkError(err);
 }
 
-void create(Mat& image, bool show, bool measure) {
+void create(Mat& image) {
   int height = image.rows;
   int width = image.cols;
 
   unsigned char *img_sobel = (unsigned char*) malloc(width * height * sizeof(unsigned char));
   unsigned char *img = (unsigned char*) image.data;
 
-  sobel(img, img_sobel, width, height, measure);
+  sobel(img, img_sobel, width, height);
 
   imshow("Input", Mat(height, width, CV_8UC1, img));
   waitKey(0);
