@@ -88,21 +88,6 @@ void sobel(unsigned char *h_img, unsigned char *h_img_sobel, int width, int heig
   magnitudeKernel<<<dim_grid, dim_block>>>(d_img_sobel_x, d_img_sobel_y, d_img_sobel, width, height);
   cudaDeviceSynchronize();
 
-  if (measure) {
-    cudaEventRecord(stop);
-    cudaEventSynchronize(stop);
-    float seconds = 0;
-    cudaEventElapsedTime(&seconds, start, stop);
-    seconds *= 1E-3;
-    int num_arrays_float = 4;
-    int num_arrays_uchar = 2;
-    int bytes = num_arrays_float * sizeof(float) + num_arrays_uchar * sizeof(unsigned char);
-    int num_ops = 9 * 3;
-
-    printf("Effective bandwidth:      %.6f GB/s\n", size * bytes / seconds * 1E-9);
-    printf("Computational throughput: %.6f GB/s\n", num_ops * size / seconds * 1E-9);
-  }
-
   err = cudaMemcpy(h_img_sobel, d_img_sobel, size * sizeof(unsigned char), cudaMemcpyDeviceToHost); checkError(err);
 
   err = cudaFree(d_img); checkError(err);
@@ -129,7 +114,6 @@ void create(Mat& image, bool show, bool measure) {
 }
 
 int main(int argc, char** argv) {
-  int column, row;
   Mat image;
   image = imread(argv[1], CV_LOAD_IMAGE_GRAYSCALE);   // Read the file
 
