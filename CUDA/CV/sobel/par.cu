@@ -105,10 +105,10 @@ void create(Mat& image) {
 
   sobel(img, img_sobel, width, height);
 
-  imshow("Input", Mat(height, width, CV_8UC1, img));
-  waitKey(0);
-  imshow("Sobel operator", Mat(height, width, CV_8UC1, img_sobel));
-  waitKey(0);
+  // imshow("Input", Mat(height, width, CV_8UC1, img));
+  // waitKey(0);
+  // imshow("Sobel operator", Mat(height, width, CV_8UC1, img_sobel));
+  // waitKey(0);
 
   free(img_sobel);
 }
@@ -127,6 +127,6 @@ int main(int argc, char** argv) {
   clock_t end = clock();
   double gpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
   printf("%lf\n", gpu_time_used);
-  
+
   return 0;
 }
