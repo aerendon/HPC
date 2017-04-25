@@ -71,8 +71,8 @@ int main(int argc, char** argv) {
 
   unsigned char *img = image.data;
 
-  imshow("Sobel", sobelOpen(image));
-  waitKey(0);
+  //imshow("Sobel", sobelOpen(image));
+  //waitKey(0);
   clock_t start = clock();
   sobelOpen(image);
   clock_t end = clock();

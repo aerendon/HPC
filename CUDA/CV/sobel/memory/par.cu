@@ -6,6 +6,8 @@
 #include <getopt.h>
 #include <cstdio>
 
+#define TILE_SIZE 
+
 using namespace cv;
 using namespace std;
 
@@ -25,6 +27,8 @@ __global__
 void convolutionKernel(unsigned char* image, float* kernel, float* out_image, int kernel_n, int width, int height) {
   int row = blockIdx.y * blockDim.y + threadIdx.y;
   int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+  __shared__ float tile[];
 
   if (row < height && col < width) {
     int n = kernel_n / 2;
